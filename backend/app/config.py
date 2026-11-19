@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     dingtalk_client_id: str = ""
     dingtalk_client_secret: str = ""
     dingtalk_enabled: bool = False
+    dingtalk_bot_name: str = "小苏"
     retrieval_threshold: float = 0.22
     max_history_messages: int = 12
 

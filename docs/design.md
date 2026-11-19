@@ -130,3 +130,24 @@ def process(self, message: dingtalk_stream.ChatbotMessage): ...
 
 - `pnpm build` 通过。
 - 浏览器实测：提问“员工每年有几天年假？”后，回答下方出现“参考来源”，显示《员工手册.md · 段落 1》与《FAQ.md · 段落 1》两个标签。
+
+## 11. 钉钉 Stream 联调改造
+
+### 目标
+
+让钉钉机器人具备可联调的基本行为：消息不重复、群聊不刷屏、长耗时回答不阻塞心跳、异常有兜底。
+
+### 关键设计
+
+1. **立即 ACK**：继承 `AsyncChatbotHandler`。SDK 收到回调后先回 ACK，再把 `process` 提交到线程池；LLM 调用和 `reply_markdown` 都跑在线程里，避免阻塞 Stream 心跳。`process` 必须是同步函数。
+2. **群聊策略**：`conversationType == "2"` 且 `isInAtList is False` 的消息直接忽略；单聊始终响应。机器人被 @ 时正常回答。
+3. **文本提取**：支持 `text` 与 `richText`，用 `get_text_list()` 拼接；去掉 `@机器人名`；图片等非文本消息回复“目前只支持文本问题”。
+4. **幂等**：按 `msgId`（缺失时用回调 header 的 messageId）做有界去重，最多保留 1000 条，避免重投导致重复回答。
+5. **会话串行**：同一个 `conversation_id` 加线程锁，避免两条消息同时读取历史、互相覆盖。
+6. **配置与可观测**：新增 `DINGTALK_BOT_NAME`；`/health` 返回 `dingtalk_configured` 与 `dingtalk_enabled`，设置页展示；新增 `scripts/dingtalk.ps1`，`dev.ps1` 在配置齐全时自动拉起 worker。
+
+### 验证
+
+- 单元测试：正常回复、异常兜底、群聊未 @ 忽略、重复 msgId 忽略、非文本提示、@ 前缀清理。
+- 真实联调（需企业凭证）：单聊提问、群聊 @ 提问、连续两条消息、长回答、异常 Key。
+- 联调前确认：应用已启用机器人、Stream 模式 Client ID/Secret 正确、事件订阅包含机器人消息、测试群已添加机器人。

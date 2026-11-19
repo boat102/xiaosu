@@ -24,7 +24,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http
 
 
 @app.get("/health")
-def health(): return {"status": "ok", "model": settings.openai_model, "openai_configured": bool(settings.openai_api_key)}
+def health():
+    return {"status": "ok", "model": settings.openai_model, "openai_configured": bool(settings.openai_api_key),
+            "dingtalk_configured": bool(settings.dingtalk_client_id and settings.dingtalk_client_secret),
+            "dingtalk_enabled": settings.dingtalk_enabled}
 
 
 @app.post("/api/chat")
@@ -127,4 +130,5 @@ def mock_orders(start_date: str | None = None, end_date: str | None = None):
 @app.get("/api/settings")
 def get_settings():
     return {"model": settings.openai_model, "base_url": settings.openai_base_url,
-            "openai_configured": bool(settings.openai_api_key), "dingtalk_enabled": settings.dingtalk_enabled}
+            "openai_configured": bool(settings.openai_api_key), "dingtalk_enabled": settings.dingtalk_enabled,
+            "dingtalk_configured": bool(settings.dingtalk_client_id and settings.dingtalk_client_secret)}
