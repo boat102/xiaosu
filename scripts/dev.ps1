@@ -29,4 +29,13 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 Start-Process $shell -ArgumentList @('-NoExit', '-Command', "Set-Location '$root\backend'; uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000")
 Start-Process $shell -ArgumentList @('-NoExit', '-Command', "Set-Location '$root\frontend'; pnpm dev")
 
+$envFile = Get-Content 'backend/.env' -ErrorAction SilentlyContinue
+$dingtalkReady = ($envFile -match '^DINGTALK_ENABLED=true') -and ($envFile -match '^DINGTALK_CLIENT_ID=.+') -and ($envFile -match '^DINGTALK_CLIENT_SECRET=.+')
+if ($dingtalkReady) {
+    Start-Process $shell -ArgumentList @('-NoExit', '-Command', "Set-Location '$root\backend'; uv run python -m app.dingtalk_bot")
+    Write-Host '钉钉 Stream worker 已启动' -ForegroundColor Green
+} else {
+    Write-Host '未启动钉钉 worker：需要 DINGTALK_ENABLED=true 且 Client ID/Secret 非空。' -ForegroundColor Yellow
+}
+
 Write-Host '后端 http://127.0.0.1:8000/docs   前端 http://localhost:3000' -ForegroundColor Green
