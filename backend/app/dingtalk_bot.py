@@ -60,8 +60,9 @@ class XiaosuHandler(dingtalk_stream.AsyncChatbotHandler):
         sender_id = message.sender_staff_id or message.sender_id or "unknown"
         conversation_id = message.conversation_id or f"{message.conversation_type or 'unknown'}:{sender_id}"
         logger.info(
-            "message sender=%s conversation=%s type=%s len=%s",
-            sender_id, conversation_id, message.conversation_type, len(text),
+            "message sender=%s conversation=%s type=%s at=%s id=%s len=%s",
+            sender_id, conversation_id, message.conversation_type,
+            message.is_in_at_list, message_id, len(text),
         )
         try:
             with self._conversation_lock(conversation_id):
