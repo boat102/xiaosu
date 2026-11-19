@@ -31,7 +31,7 @@ flowchart LR
   AG --> RAG[RAG 检索]
   RAG --> PG[(PostgreSQL + JSON Embeddings)]
   AG --> MOCK[员工 / 考勤 / 订单 Mock API]
-  AG --> OA[OpenAI Chat + Embeddings]
+  AG --> OA[OpenAI 兼容模型 / 千问]
   API --> LOG[logs/backend.log]
 ```
 
@@ -51,7 +51,7 @@ flowchart LR
 - uv
 - Node.js 22+、pnpm 9+
 - Docker Compose（推荐）
-- OpenAI API Key（默认使用阿里云百炼，需同时支持 Chat 与 Embeddings）
+- 一个兼容 OpenAI 协议的服务 API Key（默认阿里云百炼，需同时支持 Chat 与 Embeddings）
 - 钉钉开放平台企业内部应用/机器人：Client ID、Client Secret，并按钉钉 Stream 模式配置机器人消息权限和事件订阅
 
 默认 `.env.example` 已指向阿里云百炼：
