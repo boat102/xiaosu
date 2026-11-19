@@ -18,6 +18,8 @@
 
 **为什么**：Stream 客户端会在事件循环里 await handler，同步函数返回 `None` 会直接抛错；`asyncio.to_thread` 能避免数据库和 LLM 调用阻塞心跳。
 
+**联调前又做了一次改造**：把 `ChatbotHandler` 换成 `AsyncChatbotHandler`，让 SDK 立即 ACK、`process` 在线程池里执行；群聊只响应 @机器人，按 `msgId` 去重，同一个 `conversation_id` 加锁串行；文本/富文本统一提取，图片提示“只支持文本问题”。对应测试从 2 条扩到 6 条。
+
 ## 关键对话 2：把“上周”算成 2024 年
 
 **我的提示**：多轮问“他上周来上班几天？”，AI 调用考勤工具时传的日期是 `2024-04-01~2024-04-05`。请检查系统提示并修复日期换算。
@@ -68,12 +70,12 @@
 
 ## 验证记录
 
-- `uv run pytest -q`：8 passed（工具安全、Mock 员工、切片、Mock LLM、钉钉正常/异常、系统提示日期）
-- `uv run ruff check`：通过
+- `uv run pytest -q`：13 passed（工具安全、Mock 员工、切片、Mock LLM、系统提示日期、钉钉正常/异常/群聊未 @/重复消息/图片提示/富文本/@ 前缀）
+- `uv run ruff check app/dingtalk_bot.py app/config.py tests/test_dingtalk_bot.py`：通过
 - `pnpm build`：通过
 - 千问真实联调：3 篇文档入库；年假/报销/入职问题带引用；员工、考勤、时间工具调用正确；隐私问题拒答；多轮“他上周”回答 5 天
 - 浏览器实测：调试对话下方显示引用标签
-- 钉钉：代码按 SDK 修正并单测通过，但缺少企业凭证，未做真实群消息联调
+- 钉钉：已完成立即 ACK、群聊 @、去重和会话串行改造并单测通过，但缺少企业凭证，未做真实群消息联调
 
 ## AI 把我带偏的地方
 

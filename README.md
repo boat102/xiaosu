@@ -116,18 +116,45 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
 
 ## 钉钉机器人配置
 
-1. 在钉钉开放平台创建企业内部应用并启用机器人能力。
-2. 配置 Stream 模式的 Client ID / Client Secret，按平台当前控制台指引订阅机器人接收消息事件。
-3. 将凭证写入 `backend/.env`，设置 `DINGTALK_ENABLED=true`。
-4. 后端依赖安装后，在 `backend/` 目录运行：
+1. 在钉钉开放平台创建企业内部应用，启用机器人能力，并选择 Stream 模式。
+2. 在应用凭证页获取 Client ID / Client Secret，在机器人设置中开启消息接收；事件订阅按当前控制台指引勾选机器人消息。
+3. 写入 `backend/.env`：
 
-```bash
+```ini
+DINGTALK_CLIENT_ID=...
+DINGTALK_CLIENT_SECRET=...
+DINGTALK_ENABLED=true
+DINGTALK_BOT_NAME=小苏
+```
+
+4. 启动 worker（与后端使用同一份 `.env`）：
+
+```powershell
+.\scripts\dingtalk.ps1
+# 或
+cd backend
 uv run python -m app.dingtalk_bot
 ```
 
-5. 将机器人加入测试群，@机器人发送问题。钉钉消息按员工 ID 和会话 ID 隔离上下文。
+5. 将机器人加入测试群，发送 `@小苏 员工 001 是哪个部门的？`。群聊只响应 @机器人 的消息，单聊直接响应。
 
-钉钉开放平台字段和事件权限可能随平台版本变化；请以当前控制台和官方 SDK 文档为准。Stream worker 当前作为独立容器运行（Compose 的 `dingtalk` profile），也可用进程管理器单独守护。
+行为说明：
+
+- SDK 先 ACK，再在线程池里调用 LLM，长回答不会阻塞 Stream 心跳。
+- 同一会话串行处理，按 `msgId` 去重，避免重投导致重复回答。
+- 文本和富文本都可以提问；图片等非文本消息会提示“只支持文本问题”。
+- `/health` 与系统设置页会显示钉钉是否已配置、是否启用。
+- 运行 `.\scripts\dev.ps1` 时，如果 `DINGTALK_ENABLED=true` 且凭证非空，会自动再开一个 worker 窗口。
+
+联调检查清单：
+
+- [ ] `DINGTALK_CLIENT_ID` / `DINGTALK_CLIENT_SECRET` 与控制台一致
+- [ ] 机器人已加入测试群，群内 @ 能收到回调
+- [ ] 单聊提问能返回带“参考来源”的回答
+- [ ] 连续发送两条消息，上下文不串、不重复回复
+- [ ] Web 后台“对话日志”能看到 `channel=dingtalk` 的记录
+
+钉钉开放平台字段和事件权限可能随平台版本变化；请以当前控制台和官方 SDK 文档为准。Stream worker 当前作为独立进程运行（Compose 的 `dingtalk` profile），也可用进程管理器单独守护。
 
 ## 测试
 
@@ -135,11 +162,11 @@ uv run python -m app.dingtalk_bot
 ./scripts/test.sh
 ```
 
-测试包含计算器安全限制、Mock 员工 API、文本切片、Mock LLM 对话、钉钉处理器和系统提示日期，当前 8 条全部通过；除真实模型联调外，不需要 Key。
+测试包含计算器安全限制、Mock 员工 API、文本切片、Mock LLM 对话、钉钉处理器（正常/异常/群聊 @/去重/非文本/富文本/@ 前缀）和系统提示日期，当前 13 条全部通过；除真实模型联调外，不需要 Key。
 
 ## 已验证
 
-- `uv run pytest -q`：8 passed；`uv run ruff check` 通过；`pnpm build` 通过。
+- `uv run pytest -q`：13 passed；`ruff check`（本次改动的钉钉相关文件）通过；`pnpm build` 通过。
 - 千问真实链路：文档上传/索引、制度问答与引用、员工/考勤/时间工具调用、多轮“他上周”、隐私问题拒答。
 - 浏览器：调试对话展示“参考来源”标签。
 - 尚未验证：钉钉真实群消息（缺少企业开发者凭证）。
